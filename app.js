@@ -33,47 +33,50 @@
     return (y * width + x) * 4;
   }
 
-  function leftShift(digits, x, y, channel) {
-    const key = digits[modulo(x + y + channel, 8)];
-    return modulo(17 * key + 3 * x + 5 * y + 29 * channel, 256);
-  }
+  function keyValues(digits) {
+    const total = digits.reduce((sum, digit) => sum + digit, 0);
+    const pairs = [
+      10 * digits[0] + digits[1],
+      10 * digits[2] + digits[3],
+      10 * digits[4] + digits[5],
+      10 * digits[6] + digits[7]
+    ];
 
-  function middleMask(digits, x, y, channel) {
-    const key = digits[modulo(2 * x + y + channel, 8)];
-    return modulo(31 * key + 7 * x + 11 * y + 13 * channel, 256);
-  }
-
-  function rightMask(digits, x, y, channel) {
-    const key = digits[modulo(x + 2 * y + channel, 8)];
-    return modulo(29 * key + 13 * x + 17 * y + 19 * channel, 256);
+    return {
+      left: modulo(3 * total, 256),
+      middle: [
+        modulo(pairs[0] + pairs[3], 256),
+        modulo(pairs[1] + pairs[3], 256),
+        modulo(pairs[2] + pairs[3], 256)
+      ],
+      right: modulo(7 * total, 256)
+    };
   }
 
   function encodePixels(imageData, digits) {
     const { data, width, height } = imageData;
     const { leftEnd, middleEnd } = bands(width);
+    const keys = keyValues(digits);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < leftEnd; x += 1) {
         const offset = pixelOffset(x, y, width);
         for (let c = 0; c < 3; c += 1) {
-          data[offset + c] = modulo(data[offset + c] + leftShift(digits, x, y, c), 256);
+          data[offset + c] = modulo(data[offset + c] + keys.left, 256);
         }
       }
 
       for (let x = leftEnd; x < middleEnd; x += 1) {
         const offset = pixelOffset(x, y, width);
-        const original = [data[offset], data[offset + 1], data[offset + 2]];
-        const rotation = 1 + modulo(digits[modulo(x + y, 8)], 2);
         for (let c = 0; c < 3; c += 1) {
-          const rotated = original[modulo(c + rotation, 3)];
-          data[offset + c] = rotated ^ middleMask(digits, x, y, c);
+          data[offset + c] = modulo(data[offset + c] + keys.middle[c], 256);
         }
       }
 
       for (let x = middleEnd; x < width; x += 1) {
         const offset = pixelOffset(x, y, width);
         for (let c = 0; c < 3; c += 1) {
-          data[offset + c] ^= rightMask(digits, x, y, c);
+          data[offset + c] = modulo(data[offset + c] + keys.right, 256);
         }
       }
     }
@@ -96,12 +99,13 @@
   function decodePixels(imageData, digits) {
     const { data, width, height } = imageData;
     const { leftEnd, middleEnd } = bands(width);
+    const keys = keyValues(digits);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < leftEnd; x += 1) {
         const offset = pixelOffset(x, y, width);
         for (let c = 0; c < 3; c += 1) {
-          data[offset + c] = modulo(data[offset + c] - leftShift(digits, x, y, c), 256);
+          data[offset + c] = modulo(data[offset + c] - keys.left, 256);
         }
       }
     }
@@ -109,10 +113,8 @@
     for (let y = 0; y < height; y += 1) {
       for (let x = leftEnd; x < middleEnd; x += 1) {
         const offset = pixelOffset(x, y, width);
-        const unmasked = [0, 1, 2].map(c => data[offset + c] ^ middleMask(digits, x, y, c));
-        const rotation = 1 + modulo(digits[modulo(x + y, 8)], 2);
         for (let c = 0; c < 3; c += 1) {
-          data[offset + c] = unmasked[modulo(c - rotation, 3)];
+          data[offset + c] = modulo(data[offset + c] - keys.middle[c], 256);
         }
       }
     }
@@ -135,7 +137,7 @@
       for (let x = middleEnd; x < width; x += 1) {
         const offset = pixelOffset(x, y, width);
         for (let c = 0; c < 3; c += 1) {
-          data[offset + c] ^= rightMask(digits, x, y, c);
+          data[offset + c] = modulo(data[offset + c] - keys.right, 256);
         }
       }
     }

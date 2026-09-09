@@ -11,7 +11,7 @@
   <main class="shell">
     <header class="masthead">
       <div>
-        <p class="eyebrow">IMAGE DATA PRACTICAL · IMG3-v1</p>
+        <p class="eyebrow">IMAGE DATA PRACTICAL · IMG3-v2</p>
         <h1>Three-stage image decoder</h1>
       </div>
       <div class="local-badge"><span></span>Runs locally</div>
@@ -66,32 +66,34 @@
 
       <div class="rules">
         <article>
-          <div class="rule-head"><span>1</span><h3>Left band · modular subtraction</h3></div>
-          <p>For every red, green and blue value, subtract the position-dependent shift used during encoding. Wrap the result into 0–255.</p>
+          <div class="rule-head"><span>1</span><h3>Left band · subtract one value</h3></div>
+          <p>Add the eight student-number digits, multiply the total by 3, and subtract that value from every red, green and blue value in the left band.</p>
           <details>
             <summary>Exact rule</summary>
-            <p>Use zero-based coordinates <i>x</i>, <i>y</i> and channel <i>c</i>, where R=0, G=1, B=2. Let <i>d</i><sub>0</sub>…<i>d</i><sub>7</sub> be the student-number digits.</p>
-            <p><span class="formula">k = d[(x + y + c) mod 8]</span><br><span class="formula">shift = (17k + 3x + 5y + 29c) mod 256</span><br><span class="formula">decoded = (encoded − shift) mod 256</span></p>
+            <p>Let <i>d</i><sub>1</sub>…<i>d</i><sub>8</sub> be the eight student-number digits.</p>
+            <p><span class="formula">left shift = 3 × sum(d1…d8)</span><br><span class="formula">decoded = (encoded − left shift) mod 256</span></p>
           </details>
         </article>
 
         <article>
-          <div class="rule-head"><span>2</span><h3>Middle band · XOR and channel rotation</h3></div>
-          <p>Remove the XOR mask first. Then rotate the three colour channels back to their original positions.</p>
+          <div class="rule-head"><span>2</span><h3>Middle band · subtract by colour</h3></div>
+          <p>Form four two-digit numbers from the student number. Use three simple sums to calculate separate red, green and blue shifts.</p>
           <details>
             <summary>Exact rule</summary>
-            <p><span class="formula">rotation = 1 + (d[(x + y) mod 8] mod 2)</span><br><span class="formula">mask(c) = (31d[(2x + y + c) mod 8] + 7x + 11y + 13c) mod 256</span></p>
-            <p>XOR each encoded channel with its mask. If rotation=1, rotate the result right by one channel; if rotation=2, rotate it right by two channels.</p>
+            <p><span class="formula">p1 = 10d1 + d2; p2 = 10d3 + d4</span><br><span class="formula">p3 = 10d5 + d6; p4 = 10d7 + d8</span></p>
+            <p><span class="formula">red shift = (p1 + p4) mod 256</span><br><span class="formula">green shift = (p2 + p4) mod 256</span><br><span class="formula">blue shift = (p3 + p4) mod 256</span></p>
+            <p>Subtract the matching shift from every value in that colour channel and wrap the answer into 0–255.</p>
           </details>
         </article>
 
         <article>
-          <div class="rule-head"><span>3</span><h3>Right band · row swaps and XOR</h3></div>
-          <p>Within each column, swap rows 0–4 with 5–9, then 10–14 with 15–19, and continue in blocks of ten. Leave a final incomplete block unchanged. Remove the XOR mask after swapping.</p>
+          <div class="rule-head"><span>3</span><h3>Right band · row swaps and subtraction</h3></div>
+          <p>Within each column, swap rows 1–5 with 6–10, then 11–15 with 16–20, and continue in blocks of ten. Leave a final incomplete block unchanged. Then subtract one value.</p>
           <details>
             <summary>Exact rule</summary>
             <p>Swap complete five-pixel halves for all four channels, including alpha.</p>
-            <p>Then, for R, G and B only: <span class="formula">decoded = swapped XOR mask(c)</span>, where <span class="formula">mask(c) = (29d[(x + 2y + c) mod 8] + 13x + 17y + 19c) mod 256</span>.</p>
+            <p><span class="formula">right shift = 7 × sum(d1…d8)</span><br><span class="formula">decoded = (swapped − right shift) mod 256</span></p>
+            <p>Apply the subtraction to red, green and blue only.</p>
           </details>
         </article>
       </div>

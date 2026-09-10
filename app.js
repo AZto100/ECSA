@@ -33,6 +33,27 @@
     return (y * width + x) * 4;
   }
 
+  function swapFiveRowHalves(data, width, height, firstColumn, lastColumn) {
+    for (let x = firstColumn; x < lastColumn; x += 1) {
+      for (let blockStart = 0; blockStart + 9 < height; blockStart += 10) {
+        for (let step = 0; step < 5; step += 1) {
+          const upper = pixelOffset(x, blockStart + step, width);
+          const lower = pixelOffset(x, blockStart + step + 5, width);
+
+          for (let c = 0; c < 4; c += 1) {
+            const temporary = data[upper + c];
+            data[upper + c] = data[lower + c];
+            data[lower + c] = temporary;
+          }
+        }
+      }
+    }
+  }
+
+  function restoreRepositoryImage(imageData) {
+    swapFiveRowHalves(imageData.data, imageData.width, imageData.height, 0, imageData.width);
+  }
+
   function keyValues(digits) {
     const total = digits.reduce((sum, digit) => sum + digit, 0);
     const pairs = [
@@ -81,19 +102,7 @@
       }
     }
 
-    for (let x = middleEnd; x < width; x += 1) {
-      for (let blockStart = 0; blockStart + 9 < height; blockStart += 10) {
-        for (let step = 0; step < 5; step += 1) {
-          const upper = pixelOffset(x, blockStart + step, width);
-          const lower = pixelOffset(x, blockStart + step + 5, width);
-          for (let c = 0; c < 4; c += 1) {
-            const temporary = data[upper + c];
-            data[upper + c] = data[lower + c];
-            data[lower + c] = temporary;
-          }
-        }
-      }
-    }
+    swapFiveRowHalves(data, width, height, middleEnd, width);
   }
 
   function decodePixels(imageData, digits) {
@@ -119,19 +128,7 @@
       }
     }
 
-    for (let x = middleEnd; x < width; x += 1) {
-      for (let blockStart = 0; blockStart + 9 < height; blockStart += 10) {
-        for (let step = 0; step < 5; step += 1) {
-          const upper = pixelOffset(x, blockStart + step, width);
-          const lower = pixelOffset(x, blockStart + step + 5, width);
-          for (let c = 0; c < 4; c += 1) {
-            const temporary = data[upper + c];
-            data[upper + c] = data[lower + c];
-            data[lower + c] = temporary;
-          }
-        }
-      }
-    }
+    swapFiveRowHalves(data, width, height, middleEnd, width);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = middleEnd; x < width; x += 1) {
@@ -209,7 +206,14 @@
       canvas.height = image.naturalHeight;
       context.drawImage(image, 0, 0);
 
-      const original = context.getImageData(0, 0, canvas.width, canvas.height);
+      const repositoryImage = context.getImageData(0, 0, canvas.width, canvas.height);
+      restoreRepositoryImage(repositoryImage);
+
+      const original = new ImageData(
+        new Uint8ClampedArray(repositoryImage.data),
+        repositoryImage.width,
+        repositoryImage.height
+      );
       const encoded = new ImageData(new Uint8ClampedArray(original.data), original.width, original.height);
       const keyDigits = digitsOf(studentNumber);
       encodePixels(encoded, keyDigits);

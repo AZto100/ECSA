@@ -148,19 +148,9 @@
     return true;
   }
 
-  function randomIndex(length) {
-    const values = new Uint32Array(1);
-    crypto.getRandomValues(values);
-    return Math.floor((values[0] / 4294967296) * length);
-  }
+  
 
-  async function loadManifest() {
-    const response = await fetch("images/manifest.json", { cache: "no-store" });
-    if (!response.ok) throw new Error("The image list could not be loaded.");
-    const list = await response.json();
-    if (!Array.isArray(list) || list.length === 0) throw new Error("No source images are available.");
-    return list;
-  }
+  
 
   function loadImage(path) {
     return new Promise((resolve, reject) => {
@@ -200,8 +190,14 @@
     status.textContent = "Selecting and encoding an image on this device…";
 
     try {
-      const sources = await loadManifest();
-      const image = await loadImage(sources[randomIndex(sources.length)]);
+      const lastTwoDigits = Number(studentNumber.slice(-2));
+
+      const sourceNumber =
+        lastTwoDigits < 80
+        ? Math.floor(lastTwoDigits / 8) + 1
+        : 11;
+
+const image = await loadImage(`images/source-${sourceNumber}.png`);
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
       context.drawImage(image, 0, 0);
